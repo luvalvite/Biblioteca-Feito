@@ -1,0 +1,245 @@
+class Livro:
+    """Classe que representa um livro na biblioteca"""
+    def __init__(self, titulo, autor, isbn, disponivel=True):
+        self.titulo = titulo
+        self.autor = autor
+        self.isbn = isbn
+        self.disponivel = disponivel
+        self.proximo = None
+    
+    def __str__(self):
+        status = "Disponivel" if self.disponivel else "Emprestado"
+        return f"'{self.titulo}' de {self.autor} (ISBN: {self.isbn}) - {status}"
+
+
+class NoLista:
+    """NO da lista encadeada"""
+    def __init__(self, livro):
+        self.livro = livro
+        self.proximo = None
+
+
+class ListaEncadeadaBiblioteca:
+    """Lista encadeada para gerenciar livros da biblioteca"""
+    
+    def __init__(self):
+        self.cabeca = None
+        self.tamanho = 0
+        self.criterio_ordenacao = "titulo"  # Pode ser "titulo" ou "autor"
+    
+    def set_criterio_ordenacao(self, criterio):
+        """Define o criterio de ordenacao da lista"""
+        if criterio not in ["titulo", "autor"]:
+            raise ValueError("Criterio deve ser 'titulo' ou 'autor'")
+        self.criterio_ordenacao = criterio
+    
+    def inserir_ordenado(self, livro):
+        """Insere um livro naposicao correta mantendo a ordenacao"""
+        novo_no = NoLista(livro)
+        
+        # Caso a lista esteja vazia ou o novo livro deva ser o primeiro
+        if self.cabeca is None or self._deve_venir_antes(livro, self.cabeca.livro):
+            novo_no.proximo = self.cabeca
+            self.cabeca = novo_no
+            self.tamanho += 1
+            return
+        
+        # Encontrar a posicao correta para insercao
+        atual = self.cabeca
+        while atual.proximo is not None and not self._deve_venir_antes(livro, atual.proximo.livro):
+            atual = atual.proximo
+        
+        # Inserir o novo no
+        novo_no.proximo = atual.proximo
+        atual.proximo = novo_no
+        self.tamanho += 1
+    
+    def _deve_venir_antes(self, livro1, livro2):
+        """Verifica se livro1 deve vir antes de livro2 baseado no criterio de ordenacao"""
+        if self.criterio_ordenacao == "titulo":
+            return livro1.titulo.lower() < livro2.titulo.lower()
+        else:  # criterio == "autor"
+            return livro1.autor.lower() < livro2.autor.lower()
+    
+    def adicionar_livro(self, titulo, autor, isbn, disponivel=True):
+        """Adiciona um novo livro ao acervo"""
+        livro = Livro(titulo, autor, isbn, disponivel)
+        self.inserir_ordenado(livro)
+        print(f"Livro adicionado: {livro}")
+    
+    def remover_livro(self, isbn):
+        """Remove um livro do acervo pelo ISBN"""
+        if self.cabeca is None:
+            print("Lista vazia!")
+            return False
+        
+        # Caso o livro a ser removido seja o primeiro
+        if self.cabeca.livro.isbn == isbn:
+            self.cabeca = self.cabeca.proximo
+            self.tamanho -= 1
+            print(f"Livro com ISBN {isbn} removido!")
+            return True
+        
+        # Procurar o livro a ser removido
+        atual = self.cabeca
+        while atual.proximo is not None and atual.proximo.livro.isbn != isbn:
+            atual = atual.proximo
+        
+        if atual.proximo is None:
+            print(f"Livro com ISBN {isbn} nao encontrado!")
+            return False
+        
+        # Remover o no
+        atual.proximo = atual.proximo.proximo
+        self.tamanho -= 1
+        print(f"Livro com ISBN {isbn} removido!")
+        return True
+    
+    def emprestar_livro(self, isbn):
+        """Marca um livro como emprestado"""
+        livro = self.buscar_por_isbn(isbn)
+        if livro is None:
+            print(f"Livro com ISBN {isbn} nao encontrado!")
+            return False
+        
+        if not livro.disponivel:
+            print(f"Livro '{livro.titulo}' ja esta emprestado!")
+            return False
+        
+        livro.disponivel = False
+        print(f"Livro '{livro.titulo}' emprestado com sucesso!")
+        return True
+    
+    def devolver_livro(self, isbn):
+        """Marca um livro como devolvido (disponivel)"""
+        livro = self.buscar_por_isbn(isbn)
+        if livro is None:
+            print(f"Livro com ISBN {isbn} nao encontrado!")
+            return False
+        
+        if livro.disponivel:
+            print(f"Livro '{livro.titulo}' ja esta disponivel!")
+            return False
+        
+        livro.disponivel = True
+        print(f"Livro '{livro.titulo}' devolvido com sucesso!")
+        return True
+    
+    def buscar_por_titulo(self, titulo):
+        """Verifica se existe um livro com o titulo informado"""
+        atual = self.cabeca
+        while atual is not None:
+            if atual.livro.titulo.lower() == titulo.lower():
+                print(f"Livro encontrado: {atual.livro}")
+                return True
+            atual = atual.proximo
+        
+        print(f"Nenhum livro com o titulo '{titulo}' encontrado!")
+        return False
+    
+    def buscar_por_autor(self, autor):
+        """Exibe todos os livros de um autor especifico"""
+        livros_do_autor = []
+        atual = self.cabeca
+        
+        while atual is not None:
+            if atual.livro.autor.lower() == autor.lower():
+                livros_do_autor.append(atual.livro)
+            atual = atual.proximo
+        
+        if livros_do_autor:
+            print(f"\nLivros de {autor}:")
+            for livro in livros_do_autor:
+                print(f"  - {livro}")
+            print(f"Total: {len(livros_do_autor)} livro(s)")
+        else:
+            print(f"Nenhum livro de {autor} encontrado!")
+        
+        return livros_do_autor
+    
+    def buscar_por_isbn(self, isbn):
+        """Busca um livro pelo ISBN (auxiliar para emprestimo/devolucao)"""
+        atual = self.cabeca
+        while atual is not None:
+            if atual.livro.isbn == isbn:
+                return atual.livro
+            atual = atual.proximo
+        return None
+    
+    def listar_todos(self):
+        """Lista todos os livros na ordem atual da lista"""
+        if self.cabeca is None:
+            print("Acervo vazio!")
+            return
+        
+        print(f"\nAcervo da Biblioteca ({self.tamanho} livros) - Ordenado por: {self.criterio_ordenacao}")
+        print("=" * 80)
+        atual = self.cabeca
+        while atual is not None:
+            print(atual.livro)
+            atual = atual.proximo
+        print("=" * 80)
+    
+    def obter_tamanho(self):
+        """Retorna o numero de livros na biblioteca"""
+        return self.tamanho
+
+
+# Exemplo de uso
+if __name__ == "__main__":
+    biblioteca = ListaEncadeadaBiblioteca()
+    
+    print("=" * 80)
+    print("SISTEMA DE GERENCIAMENTO DE BIBLIOTECA - LISTA ENCADEADA")
+    print("=" * 80)
+    
+    # Adicionando livros (serao automaticamente ordenados por titulo)
+    print("\n1. ADICIONANDO LIVROS (ordenado por TITULO):")
+    biblioteca.adicionar_livro("Dom Casmurro", "Machado de Assis", "978-85-1234")
+    biblioteca.adicionar_livro("Memorias Postumas", "Machado de Assis", "978-85-5678")
+    biblioteca.adicionar_livro("Capitaes da Areia", "Jorge Amado", "978-85-9012")
+    biblioteca.adicionar_livro("Angu de Sangue", "Joao Antonio", "978-85-3456")
+    biblioteca.adicionar_livro("Vidas Secas", "Graciliano Ramos", "978-85-7890")
+    
+    biblioteca.listar_todos()
+    
+    # Mudando criterio de ordenacao para autor
+    print("\n2. MUDANDO CRITERIO DE ORDENACAO PARA AUTOR:")
+    biblioteca.set_criterio_ordenacao("autor")
+    
+    # Adicionando mais livros (serao ordenados por autor)
+    biblioteca.adicionar_livro("Quarto de Despejo", "Carolina Maria de Jesus", "978-85-2345")
+    biblioteca.adicionar_livro("Padre e Mooca", "Plinio Marcos", "978-85-6789")
+    
+    biblioteca.listar_todos()
+    
+    # Busca por titulo
+    print("\n3. BUSCA POR TITULO:")
+    biblioteca.buscar_por_titulo("Vidas Secas")
+    biblioteca.buscar_por_titulo("Harry Potter")
+    
+    # Busca por autor
+    print("\n4. BUSCA POR AUTOR:")
+    biblioteca.buscar_por_autor("Machado de Assis")
+    biblioteca.buscar_por_autor("Jorge Amado")
+    
+    # Emprestimo de livros
+    print("\n5. EMPRESTIMO DE LIVROS:")
+    biblioteca.emprestar_livro("978-85-1234")  # Dom Casmurro
+    biblioteca.emprestar_livro("978-85-9012")  # Capitaes da Areia
+    
+    biblioteca.listar_todos()
+    
+    # Devolucao de livros
+    print("\n6. DEVOLUCAO DE LIVROS:")
+    biblioteca.devolver_livro("978-85-1234")  # Dom Casmurro
+    
+    biblioteca.listar_todos()
+    
+    # Remocao de livro
+    print("\n7. REMOCAO DE LIVRO:")
+    biblioteca.remover_livro("978-85-3456")  # Angu de Sangue
+    
+    biblioteca.listar_todos()
+    
+    print(f"\nTotal de livros na biblioteca: {biblioteca.obter_tamanho()}")
